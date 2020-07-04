@@ -1,0 +1,208 @@
+// MandsaurProject.cpp : This file contains the 'main' function. Program execution begins and ends there.
+//
+
+#include <iterator>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include<algorithm>
+
+using namespace std;
+
+class Industry {
+    public :
+        string garbage;
+        string name;
+        string type;
+        string mobile;
+        string email;
+        string address;
+        string numEmployees;   
+        string extra_info;
+        string workTitle;
+        string workType;
+
+        Industry(string temp , string n, string t, string m, string e, string add, string num, string ei, string wtlt, string wtyp)
+        {
+            garbage = temp;
+            name = n;
+            type = t;
+            mobile = m;
+            email = e;
+            address = add;
+            numEmployees = num;
+            extra_info = ei;
+            workTitle = wtlt;
+            workType = wtyp;
+        }
+};
+
+class Employee {
+    public :
+        string garbage;
+        
+        string name;
+        string address;
+        string mobile;
+        string email;
+        string education;
+        string workTitle;
+        string workType;
+        string terms;
+        Employee(string temp,  string n, string add, string mob, string em, string wtyp, string edu, string wtlt, string tnc)
+        {
+            garbage = temp;
+            
+            name = n;
+            address = add;
+            mobile = mob;
+            email = em;
+            education = edu;
+            
+            workTitle = wtlt;
+            workType = wtyp;
+            terms = tnc;
+        }
+};
+
+class CSVRow
+{
+public:
+    std::string const& operator[](std::size_t index) const
+    {
+        return m_data[index];
+    }
+    std::size_t size() const
+    {
+        return m_data.size();
+    }
+    void readNextRow(std::istream& str)
+    {
+        std::string line;
+        std::getline(str, line);
+
+        std::stringstream lineStream(line);
+        std::string cell;
+
+        m_data.clear();
+        while (std::getline(lineStream, cell, ','))
+        {
+            cell.erase(std::remove(cell.begin(), cell.end(), '\"'), cell.end());
+            transform(cell.begin(), cell.end(), cell.begin(), ::tolower);
+            m_data.push_back(cell);            
+        }
+        // This checks for a trailing comma with no data after it.
+        if (!lineStream && cell.empty())
+        {
+            // If there was a trailing comma then add an empty element.
+            m_data.push_back("");
+        }
+    }
+private:
+    std::vector<std::string> m_data;
+};
+
+std::istream& operator>>(std::istream& str, CSVRow& data)
+{
+    data.readNextRow(str);
+    return str;
+}
+void findEmployeesForIndustries(vector<Industry>& industryDetails, vector<Employee>& employeeDetails);
+
+void parseInput(string industryFilePath, string employeeFilePath)
+{
+    ifstream ifile(industryFilePath);
+    vector<Industry> industryDetails;
+    CSVRow details;
+    while (ifile >> details)
+    {
+        Industry* ind = new Industry(details[0], details[1], details[2], details[3], details[4], details[5], details[6], details[7], details[8], details[9]);
+        industryDetails.push_back(*ind);
+    }
+    industryDetails.erase(industryDetails.begin());
+    ifile.close();
+    ifstream efile(employeeFilePath);
+    vector<Employee> employeeDetails;
+    CSVRow detaile;
+    while (efile >> detaile)
+    {
+        Employee* emp = new Employee(detaile[0], detaile[1], detaile[2], detaile[3], detaile[4], detaile[5], detaile[6], detaile[7], detaile[8]);
+        employeeDetails.push_back(*emp);
+    }
+    employeeDetails.erase(employeeDetails.begin());
+    findEmployeesForIndustries(industryDetails, employeeDetails);
+}
+
+void createFileForInd(Industry ind, vector<Employee> &e)
+{
+    fstream files;
+    files.open(ind.name + ".csv", ios::out);
+    files << "Name of the Industry," << ind.name << "\nType of Work," << ind.type << "\n Contact Number : ," << ind.mobile << "\n Email Address : ," << ind.email <<  "\n Worker Required, " << ind.workTitle << "\n";
+    files << "\n";
+    files << "Eligible Employees Details : \n";
+    files << "Name" << ", Address" << ", Mobile No." << ", Email ID"<<  ", Education" << ", Work Type" << ", Previous Experience " << "\n";
+    for (int i = 0; i < e.size(); i++)
+    {
+        files << e[i].name << "," << e[i].address << "," << e[i].mobile << "," <<e[i].email << ","<< e[i].education << "," << e[i].workType << "," << e[i].workTitle << "\n";
+    }
+    files.close();
+}
+
+
+void findEmployeesForIndustries(vector<Industry> &industryDetails, vector<Employee> &employeeDetails)
+{
+    vector<bool> status(employeeDetails.size(), false);
+    fstream files;
+    files.open("employeesList.csv"  , ios::out);
+    files << "List Of Employees\n";
+    files << "Name" << ", Address" << ", Mobile No." << ", Email ID" << ", Company Name" << "\n";
+    for (int i = 0; i < industryDetails.size(); i++)
+    {
+        vector<Employee> selectEmployees;
+        
+        industryDetails[i].workTitle.erase(remove(industryDetails[i].workTitle.begin(), industryDetails[i].workTitle.end(), ' '), industryDetails[i].workTitle.end());
+         int empReq = stoi(industryDetails[i].numEmployees);
+         
+        for (int j = 0; j < employeeDetails.size(); j++)
+        {
+            employeeDetails[j].workTitle.erase(remove(employeeDetails[j].workTitle.begin(), employeeDetails[j].workTitle.end(), ' '), employeeDetails[j].workTitle.end());
+            if (empReq == 0)
+                break;
+            if (!status[j] && employeeDetails[j].workTitle.compare(industryDetails[i].workTitle) == 0)
+            {
+                files << employeeDetails[j].name << "," << employeeDetails[j].address << "," << employeeDetails[j].mobile << "," << employeeDetails[j].email << "," << industryDetails[i].name << "\n";
+                status[j] = true;
+                empReq--;
+                selectEmployees.push_back(employeeDetails[j]);
+            }
+        }
+        createFileForInd(industryDetails[i], selectEmployees);
+    }
+    files.close();
+}
+
+
+int main()
+{
+    string industryPath;
+    string employeesPath;
+    cout << "Enter Industry File Path: ";
+    cin >> industryPath;
+    cout << "\nEnter Employees File Path: ";
+    cin >> employeesPath;
+    parseInput(industryPath, employeesPath);
+    
+}
+
+// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
+// Debug program: F5 or Debug > Start Debugging menu
+
+// Tips for Getting Started: 
+//   1. Use the Solution Explorer window to add/manage files
+//   2. Use the Team Explorer window to connect to source control
+//   3. Use the Output window to see build output and other messages
+//   4. Use the Error List window to view errors
+//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
+//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
